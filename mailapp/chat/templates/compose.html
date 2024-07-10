@@ -1,0 +1,66 @@
+<!-- compose.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Compose</title>
+</head>
+<body>
+    <h2>Compose Message</h2>
+    <form method="post">
+        {% csrf_token %}
+        <label for="recipient">Recipient:</label>
+        <input type="text" id="recipient" name="recipient" required><br><br>
+        <label for="subject">Subject:</label>
+        <input type="text" id="subject" name="subject" required><br><br>
+        <label for="body">Message:</label><br>
+        <textarea id="body" name="body" rows="5" cols="50" required></textarea><br><br>
+        <button type="submit">Send</button>
+    </form>
+</body>
+</html>
+<!-- compose.html -->
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#id_recipient').change(function() {
+            var recipient = $(this).val();
+            $.ajax({
+                url: `/get_user/${recipient}/`,
+                type: 'GET',
+                success: function(data) {
+                    if (data.exists) {
+                        // User exists, enable Send button
+                        $('#send-button').prop('disabled', false);
+                    } else {
+                        // User does not exist, disable Send button
+                        $('#send-button').prop('disabled', true);
+                        alert(`User '${recipient}' does not exist.`);
+                    }
+                },
+                error: function(xhr, textStatus, errorThrown) {
+                    console.error('Error fetching user:', textStatus);
+                    // Handle error, e.g., display error message
+                    alert(`Error fetching user '${recipient}': ${xhr.statusText}`);
+                }
+            });
+        });
+    });
+</script>
+
+<form method="post" action="{% url 'compose' %}">
+    {% csrf_token %}
+    <label for="id_recipient">Recipient:</label>
+    <input type="text" id="id_recipient" name="recipient">
+    <br>
+    <label for="id_subject">Subject:</label>
+    <input type="text" id="id_subject" name="subject">
+    <br>
+    <label for="id_body">Body:</label>
+    <textarea id="id_body" name="body"></textarea>
+    <br>
+    <button type="submit" id="send-button" name="action" value="Send" disabled>Send</button>
+    <button type="submit" name="action" value="Save as Draft">Save as Draft</button>
+</form>

@@ -1,0 +1,24 @@
+<!-- drafts.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Drafts</title>
+</head>
+<body>
+    <h1>Drafts</h1>
+    <ul>
+    {% for draft in drafts %}
+        <li>
+            <strong>Subject:</strong> {{ draft.subject }}<br>
+            <strong>Message:</strong> {{ draft.body }}<br>
+        </li>
+    {% endfor %}
+    </ul>
+    <a href="{% url 'compose' %}">Compose</a> |
+    <a href="{% url 'inbox' %}">Inbox</a> |
+    <a href="{% url 'sent' %}">Sent</a> |
+    <a href="{% url 'logout' %}">Logout</a>
+</body>
+</html>

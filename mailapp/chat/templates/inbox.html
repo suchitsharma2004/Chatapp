@@ -1,0 +1,25 @@
+<!-- inbox.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Inbox</title>
+</head>
+<body>
+    <h1>Inbox</h1>
+    <ul>
+    {% for message in messages %}
+        <li>
+            <strong>From:</strong> {{ message.sender.username }}<br>
+            <strong>Subject:</strong> {{ message.subject }}<br>
+            <strong>Message:</strong> {{ message.body }}<br>
+        </li>
+    {% endfor %}
+    </ul>
+    <a href="{% url 'compose' %}">Compose</a> |
+    <a href="{% url 'drafts' %}">Drafts</a> |
+    <a href="{% url 'sent' %}">Sent</a> |
+    <a href="{% url 'logout' %}">Logout</a>
+</body>
+</html>
