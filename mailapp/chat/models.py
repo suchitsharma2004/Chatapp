@@ -23,10 +23,12 @@ class Message(models.Model):
     def __str__(self):
         return self.subject
 
+from django.utils import timezone
 class Draft(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     subject = models.CharField(max_length=255)
     body = models.TextField()
+    date_saved = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return self.subject
