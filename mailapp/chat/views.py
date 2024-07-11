@@ -1,9 +1,4 @@
-# from django.shortcuts import render
-
-# # Create your views here.
-# # views.py
-
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, logout, authenticate
 from django.contrib import messages 
@@ -37,51 +32,6 @@ def inbox(request):
     received_messages = Message.objects.filter(recipient=user)
     return render(request, 'inbox.html', {'messages': received_messages})
 
-# @login_required
-# def compose(request):
-#     if request.method == 'POST':
-#         recipient_username = request.POST.get('recipient')
-#         subject = request.POST.get('subject')
-#         body = request.POST.get('body')
-#         action = request.POST.get('action')
-        
-#         if action == 'Send':
-#             try:
-#                 recipient = User.objects.get(username=recipient_username)
-#                 Message.objects.create(
-#                     sender=request.user,
-#                     recipient=recipient,
-#                     subject=subject,
-#                     body=body
-#                 )
-#             except User.DoesNotExist:
-#                 messages.error(request, f"User '{recipient_username}' does not exist.")
-        
-#         elif action == 'Save as Draft':
-#             Draft.objects.create(
-#                 user=request.user,
-#                 subject=subject,
-#                 body=body
-#             )
-        
-#         return redirect('inbox')  # Redirect to inbox after sending or saving draft
-
-#     return render(request, 'compose.html')
-# views.py
-
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from .models import Message, Draft
-# views.py
-
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from .models import Message, Draft
-from django.contrib.auth.models import User
-from django.http import JsonResponse
-
 @login_required
 def compose(request):
     if request.method == 'POST':
@@ -90,21 +40,9 @@ def compose(request):
         body = request.POST.get('body')
         action = request.POST.get('action')
         
-        if action == 'Send':
-            # Check if recipient exists
-            try:
-                recipient = User.objects.get(username=recipient_username)
-                Message.objects.create(
-                    sender=request.user,
-                    recipient=recipient,
-                    subject=subject,
-                    body=body
-                )
-                return redirect('inbox')  # Redirect to inbox after sending message
-            except User.DoesNotExist:
-                messages.error(request, f"User '{recipient_username}' does not exist.")
+    
         
-        elif action == 'Save as Draft':
+        if action == 'Save as Draft':
             Draft.objects.create(
                 user=request.user,
                 subject=subject,
