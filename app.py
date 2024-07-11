@@ -340,17 +340,6 @@ def main():
                         st.session_state[f"show_reply_{message_id}"] = False
                         st.experimental_rerun()  # Refresh the inbox after sending the reply
             
-            # with st.expander(f"From: {from_user},     Subject: {subject},    Received: {formatted_date_sent}"):
-            #     st.markdown(f"**Content:**\n{content}")
-                
-            #     if st.button("Reply", key=f"reply_{message_id}"):
-            #         if f"reply_content_{message_id}" not in st.session_state:
-            #             st.session_state[f"reply_content_{message_id}"] = ""
-            #         st.text_area("Reply", key=f"reply_content_{message_id}")
-            #         if st.button("Send Reply", key=f"send_reply_{message_id}"):
-            #             send_message(from_user, f"Re: {subject}", st.session_state[f"reply_content_{message_id}"])
-                
-            #     st.markdown("---")
 
     elif selected_page == 'Compose':
         st.write("Compose a new message:")
