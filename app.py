@@ -6,9 +6,7 @@ from datetime import datetime
 # Function to navigate to different pages
 def navigate_to(page_name):
     st.session_state.page = page_name
-# def navigate_to(page_name):
-#     st.session_state.page = page_name
-#     st.experimental_rerun() 
+ 
 # Function to handle login
 def login(username, password):
     session = requests.Session()
@@ -140,27 +138,28 @@ def fetch_sent_messages(username):
     return sent_messages
 
 # Function to save message as draft
-def save_draft(to, subject, content):
+def save_draft(to_list, subject, content):
     session = st.session_state.session
     
-    draft_data = {
-        'recipient': to,
-        'subject': subject,
-        'body': content,
-        'action': 'Save as Draft'  # Specify the action to save as draft on the Django side
-    }
-    
-    headers = {'X-CSRFToken': session.cookies.get('csrftoken')}  # Include CSRF token in headers
-    
-    response = session.post('http://localhost:8000/compose/', data=draft_data, headers=headers)
-    
-    if response.status_code == 200:
-        st.success('Draft saved successfully.')
-    else:
-        st.error(f"Failed to save draft. Status code: {response.status_code}")
+    for to in to_list:
+        draft_data = {
+            'recipient': to,
+            'subject': subject,
+            'body': content,
+            'action': 'Save as Draft'  # Specify the action to save as draft on the Django side
+        }
+        
+        headers = {'X-CSRFToken': session.cookies.get('csrftoken')}  # Include CSRF token in headers
+        
+        response = session.post('http://localhost:8000/compose/', data=draft_data, headers=headers)
+        
+        if response.status_code == 200:
+            st.success(f'Draft saved successfully for {to}.')
+        else:
+            st.error(f"Failed to save draft for {to}. Status code: {response.status_code}")
 
-# Function to send message
-def send_message(to_username, subject, content, send_to_all=False):
+#Function to send message
+def send_message(to_usernames, subject, content, send_to_all=False):
     session = st.session_state.session
     
     if send_to_all:
@@ -181,25 +180,70 @@ def send_message(to_username, subject, content, send_to_all=False):
                 return False
         st.success('Message sent to all users successfully.')
         return True
-    else:
-        # Send to a specific user
+    # else:
+    #     for to_username in to_usernames:
+    #     # Send to a specific user
+    #         message_data = {
+    #             'recipient': to_username,
+    #             'subject': subject,
+    #             'body': content,
+    #             'action': 'Send'  # Specify the action to send message on the Django side
+    #         }
+    #         headers = {'X-CSRFToken': session.cookies.get('csrftoken')}  # Include CSRF token in headers
+    #         response = session.post('http://localhost:8000/compose/', data=message_data, headers=headers)
+    #         if response.status_code == 200:
+    #             save_sent_message(st.session_state.username, to_username, subject, content)
+    #             st.success('Message sent successfully.')
+    #             return True
+    #         else:
+    #             st.error(f"Failed to send message. Status code: {response.status_code}")
+    #             return False
+
+def send_multi_message(to_list, subject, content):
+    session = st.session_state.session
+    
+    for to in to_list:
         message_data = {
-            'recipient': to_username,
+            'recipient': to,
             'subject': subject,
             'body': content,
             'action': 'Send'  # Specify the action to send message on the Django side
         }
+        
         headers = {'X-CSRFToken': session.cookies.get('csrftoken')}  # Include CSRF token in headers
+        
         response = session.post('http://localhost:8000/compose/', data=message_data, headers=headers)
+        
         if response.status_code == 200:
-            save_sent_message(st.session_state.username, to_username, subject, content)
-            st.success('Message sent successfully.')
-            return True
+            save_sent_message(st.session_state.username, to, subject, content)
+            st.success(f'Message sent successfully to {to}.')
         else:
-            st.error(f"Failed to send message. Status code: {response.status_code}")
-            return False
+            st.error(f"Failed to send message to {to}. Status code: {response.status_code}")
 
 # Function to save sent message to database
+# def save_sent_message(sender_username, recipient_username, subject, content):
+#     db_path = 'mailapp/db.sqlite3'
+
+#     connection = sqlite3.connect(db_path)
+#     cursor = connection.cursor()
+
+#     # Fetch sender and recipient IDs
+#     cursor.execute("SELECT id FROM auth_user WHERE username = ?", (sender_username,))
+#     sender_id = cursor.fetchone()[0]
+#     cursor.execute("SELECT id FROM auth_user WHERE username = ?", (recipient_username,))
+#     recipient_id = cursor.fetchone()[0]
+
+#     # Insert message into database
+#     date_sent = datetime.now().strftime('%Y-%m-%d %H:%M')
+#     cursor.execute("""
+#         INSERT INTO chat_message (sender_id, recipient_id, subject, body, date_sent)
+#         VALUES (?, ?, ?, ?, ?)
+#     """, (sender_id, recipient_id, subject, content, date_sent))
+
+#     connection.commit()
+#     cursor.close()
+#     connection.close()
+
 def save_sent_message(sender_username, recipient_username, subject, content):
     db_path = 'mailapp/db.sqlite3'
 
@@ -208,9 +252,18 @@ def save_sent_message(sender_username, recipient_username, subject, content):
 
     # Fetch sender and recipient IDs
     cursor.execute("SELECT id FROM auth_user WHERE username = ?", (sender_username,))
-    sender_id = cursor.fetchone()[0]
+    sender_result = cursor.fetchone()
+    if sender_result is None:
+        st.error(f"Sender '{sender_username}' not found.")
+        return
+    sender_id = sender_result[0]
+
     cursor.execute("SELECT id FROM auth_user WHERE username = ?", (recipient_username,))
-    recipient_id = cursor.fetchone()[0]
+    recipient_result = cursor.fetchone()
+    if recipient_result is None:
+        st.error(f"Recipient '{recipient_username}' not found.")
+        return
+    recipient_id = recipient_result[0]
 
     # Insert message into database
     date_sent = datetime.now().strftime('%Y-%m-%d %H:%M')
@@ -222,7 +275,6 @@ def save_sent_message(sender_username, recipient_username, subject, content):
     connection.commit()
     cursor.close()
     connection.close()
-
 # Function to delete draft
 def delete_draft(draft_id):
     db_path = 'mailapp/db.sqlite3'
@@ -273,6 +325,57 @@ def fetch_messages_by_subject(username, subject):
     connection.close()
 
     return received_messages, sent_messages
+
+# def reply_message(subject, reply_content):
+#     session = st.session_state.session
+
+#     # Fetch original message to get recipient details
+#     db_path = 'mailapp/db.sqlite3'
+#     connection = sqlite3.connect(db_path)
+#     cursor = connection.cursor()
+#     cursor.execute("""
+#         SELECT m.sender_id, m.subject
+#         FROM chat_message m
+#         JOIN auth_user u ON m.sender_id = u.id
+#         WHERE m.subject = ? AND u.username != ?
+#         ORDER BY m.date_sent DESC
+#         LIMIT 1
+#     """, (subject, st.session_state.username))
+#     original_message = cursor.fetchone()
+#     cursor.close()
+#     connection.close()
+
+#     if original_message:
+#         original_sender_id, original_subject = original_message
+
+#         # Fetch original sender username
+#         connection = sqlite3.connect(db_path)
+#         cursor = connection.cursor()
+#         cursor.execute("SELECT username FROM auth_user WHERE id = ?", (original_sender_id,))
+#         sender = cursor.fetchone()
+#         cursor.close()
+#         connection.close()
+
+#         if sender:
+#             original_sender = sender[0]
+#             reply_data = {
+#                 'recipient': original_sender,
+#                 'subject': f'Re: {original_subject}',
+#                 'body': reply_content,
+#                 'action': 'Send'
+#             }
+#             headers = {'X-CSRFToken': session.cookies.get('csrftoken')}
+#             response = session.post('http://localhost:8000/compose/', data=reply_data, headers=headers)
+
+#             if response.status_code == 200:
+#                 save_sent_message(st.session_state.username, original_sender, f'Re: {original_subject}', reply_content)
+#                 st.success('Reply sent successfully.')
+#             else:
+#                 st.error(f"Failed to send reply. Status code: {response.status_code}")
+#         else:
+#             st.error("Original message sender not found.")
+#     else:
+#         st.error("No original message found with the given subject.")
 
 # Streamlit code for login, inbox page, and sidebar
 def main():
@@ -330,27 +433,32 @@ def main():
                     st.session_state[f"show_reply_{message_id}"] = True
                 
                 if st.session_state.get(f"show_reply_{message_id}", False):
-                    reply_to = st.text_input("To", from_user, key=f"to_{message_id}")
+                    # reply_to = st.text_input("To", [from_user], key=f"to_{message_id}")
+                    reply_to = st.multiselect("To", [from_user], key=f"to_{message_id}")  # Allow selecting multiple recipients if needed
                     reply_subject = st.text_input("Subject", f"Re: {subject}", key=f"subject_{message_id}")
+                    # reply_subject=st.text_input("subject")
                     reply_content = st.text_area("Content", key=f"content_{message_id}")
+                    # reply_content=st.text_area("reply Content")
 
                     if st.button("Send Reply", key=f"send_reply_{message_id}"):
-                        send_message(reply_to, reply_subject, reply_content)
+                        send_multi_message(reply_to, reply_subject, reply_content)
+                        # reply_message(reply_subject, reply_content)
+
                         st.success("Reply sent successfully.")
                         st.session_state[f"show_reply_{message_id}"] = False
                         st.experimental_rerun()  # Refresh the inbox after sending the reply
             
-
     elif selected_page == 'Compose':
         st.write("Compose a new message:")
 
         # Fetch users and populate dropdown
         users = fetch_users()
-        to = st.selectbox("To", users, key="compose_to") if users else st.text_input("To", key="compose_to")  # Show text input if no users fetched
+        to_usernames = st.multiselect('To', users)
+        # to = st.multiselect("To", users, key="compose_to") if users else st.text_input("To", key="compose_to")  # Show text input if no users fetched
         
         if 'reply_subject' in st.session_state:
             subject = st.session_state.reply_subject
-            to = st.session_state.reply_to[0] if len(st.session_state.reply_to) == 1 else st.multiselect("To", st.session_state.reply_to)
+            to = st.session_state.reply_to[0] if len(st.session_state.reply_to) == 1 else st.multiselectselect("To", st.session_state.reply_to)
             st.session_state.pop('reply_subject')
             st.session_state.pop('reply_to')
         else:
@@ -361,24 +469,24 @@ def main():
         # Buttons for actions
         col1, col2 = st.columns([1, 3])  # Reversed column widths
         if col1.button("Save as Draft", key="compose_save_draft"):
-            save_draft(to, subject, content)
+            save_draft(to_usernames, subject, content)
         if col1.button("Send", key="compose_send"):
             if send_to_all:
-                send_message(to, subject, content, send_to_all=True)
+                send_message(users, subject, content, send_to_all=True)
             else:
-                send_message(to, subject, content)
+                send_multi_message(to_usernames, subject, content)
 
     elif selected_page == 'Drafts':
         st.write("Your Drafts:")
-        
-        # Fetch drafts for the logged-in user
+    
+    # Fetch drafts for the logged-in user
         drafts = fetch_drafts(st.session_state.username)
-        
+    
         for draft in drafts:
             draft_id, to, subject, content = draft
             
             st.write("Edit Draft:")
-            to = st.selectbox(f"To {draft_id}", fetch_users(), index=fetch_users().index(to), key=f"to_{draft_id}") if fetch_users() else st.text_input(f"To {draft_id}", value=to)
+            to = st.multiselect(f"To {draft_id}", fetch_users(), default=[to], key=f"to_{draft_id}") if fetch_users() else [st.text_input(f"To {draft_id}", value=to)]
             subject = st.text_input(f"Subject {draft_id}", value=subject, key=f"subject_{draft_id}")
             content = st.text_area(f"Content {draft_id}", value=content, key=f"content_{draft_id}")
             
@@ -386,11 +494,11 @@ def main():
             if col1.button(f"Save Draft {draft_id}", key=f"save_draft_{draft_id}"):
                 save_draft(to, subject, content)
             if col2.button(f"Send {draft_id}", key=f"send_{draft_id}"):
-                send_message(to, subject, content)
+                send_multi_message(to, subject, content)
+                delete_draft(draft_id)
             if col3.button(f"Delete {draft_id}", key=f"delete_draft_{draft_id}"):
                 delete_draft(draft_id)
             st.write("---")
-
     elif selected_page == 'Sent':
         st.write("Sent Messages:")
 
