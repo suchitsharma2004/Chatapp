@@ -2,10 +2,15 @@ import streamlit as st
 import requests
 import sqlite3
 from datetime import datetime
+import google.generativeai as genai
+
 
 # Function to navigate to different pages
 def navigate_to(page_name):
     st.session_state.page = page_name
+
+genai.configure(api_key='AIzaSyD040mK5kKMExKdU-qzOil9kT-yDIp2d5Q  ')
+
  
 # Function to handle login
 def login(username, password):
@@ -164,7 +169,8 @@ def send_message(to_usernames, subject, content, send_to_all=False):
     
     if send_to_all:
         # Send to all users
-        users = fetch_all_users()
+        # users = fetch_all_users()
+        users = fetch_users()
         for user in users:
             message_data = {
                 'recipient': user,
@@ -378,6 +384,12 @@ def fetch_messages_by_subject(username, subject):
 #         st.error("No original message found with the given subject.")
 
 # Streamlit code for login, inbox page, and sidebar
+
+def generate_email(prompt):
+    # Use the Google Generative AI model to generate content
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text.strip()
 def main():
     
     st.title("Mail Application")
@@ -465,6 +477,21 @@ def main():
             subject = st.text_input("Subject", key="compose_subject")
         content = st.text_area("Content", key="compose_content")
         send_to_all = st.checkbox("Send to all users")
+        st.write("Or let AI help you write the email:")
+        ai_prompt = st.text_input("Enter a prompt for AI to generate email content:", key="ai_prompt")
+        if st.button("Generate with AI"):
+            if ai_prompt:
+                generated_content = generate_email(ai_prompt)
+                st.session_state.generated_content = generated_content
+            else:
+                st.warning("Please enter a prompt for AI to generate content.")
+
+        if 'generated_content' in st.session_state:
+            st.text_area("Generated Content", value=st.session_state.generated_content, key="compose_content_generated", height=200)
+            if st.button("Use Generated Content"):
+                content = st.session_state.generated_content
+                st.session_state.compose_content = content
+                st.success("Generated content has been applied.")
 
         # Buttons for actions
         col1, col2 = st.columns([1, 3])  # Reversed column widths
@@ -475,6 +502,8 @@ def main():
                 send_message(users, subject, content, send_to_all=True)
             else:
                 send_multi_message(to_usernames, subject, content)
+        
+            
 
     elif selected_page == 'Drafts':
         st.write("Your Drafts:")
