@@ -171,24 +171,7 @@ def send_message(to_usernames, subject, content, send_to_all=False):
                 return False
         st.success('Message sent to all users successfully.')
         return True
-    # else:
-    #     for to_username in to_usernames:
-    #     # Send to a specific user
-    #         message_data = {
-    #             'recipient': to_username,
-    #             'subject': subject,
-    #             'body': content,
-    #             'action': 'Send'  # Specify the action to send message on the Django side
-    #         }
-    #         headers = {'X-CSRFToken': session.cookies.get('csrftoken')}  # Include CSRF token in headers
-    #         response = session.post('http://localhost:8000/compose/', data=message_data, headers=headers)
-    #         if response.status_code == 200:
-    #             save_sent_message(st.session_state.username, to_username, subject, content)
-    #             st.success('Message sent successfully.')
-    #             return True
-    #         else:
-    #             st.error(f"Failed to send message. Status code: {response.status_code}")
-    #             return False
+    
 
 def send_multi_message(to_list, subject, content):
     session = st.session_state.session
@@ -211,29 +194,7 @@ def send_multi_message(to_list, subject, content):
         else:
             st.error(f"Failed to send message to {to}. Status code: {response.status_code}")
 
-# Function to save sent message to database
-# def save_sent_message(sender_username, recipient_username, subject, content):
-#     db_path = 'mailapp/db.sqlite3'
 
-#     connection = sqlite3.connect(db_path)
-#     cursor = connection.cursor()
-
-#     # Fetch sender and recipient IDs
-#     cursor.execute("SELECT id FROM auth_user WHERE username = ?", (sender_username,))
-#     sender_id = cursor.fetchone()[0]
-#     cursor.execute("SELECT id FROM auth_user WHERE username = ?", (recipient_username,))
-#     recipient_id = cursor.fetchone()[0]
-
-#     # Insert message into database
-#     date_sent = datetime.now().strftime('%Y-%m-%d %H:%M')
-#     cursor.execute("""
-#         INSERT INTO chat_message (sender_id, recipient_id, subject, body, date_sent)
-#         VALUES (?, ?, ?, ?, ?)
-#     """, (sender_id, recipient_id, subject, content, date_sent))
-
-#     connection.commit()
-#     cursor.close()
-#     connection.close()
 
 def save_sent_message(sender_username, recipient_username, subject, content):
     db_path = 'mailapp/db.sqlite3'
@@ -317,56 +278,6 @@ def fetch_messages_by_subject(username, subject):
 
     return received_messages, sent_messages
 
-# def reply_message(subject, reply_content):
-#     session = st.session_state.session
-
-#     # Fetch original message to get recipient details
-#     db_path = 'mailapp/db.sqlite3'
-#     connection = sqlite3.connect(db_path)
-#     cursor = connection.cursor()
-#     cursor.execute("""
-#         SELECT m.sender_id, m.subject
-#         FROM chat_message m
-#         JOIN auth_user u ON m.sender_id = u.id
-#         WHERE m.subject = ? AND u.username != ?
-#         ORDER BY m.date_sent DESC
-#         LIMIT 1
-#     """, (subject, st.session_state.username))
-#     original_message = cursor.fetchone()
-#     cursor.close()
-#     connection.close()
-
-#     if original_message:
-#         original_sender_id, original_subject = original_message
-
-#         # Fetch original sender username
-#         connection = sqlite3.connect(db_path)
-#         cursor = connection.cursor()
-#         cursor.execute("SELECT username FROM auth_user WHERE id = ?", (original_sender_id,))
-#         sender = cursor.fetchone()
-#         cursor.close()
-#         connection.close()
-
-#         if sender:
-#             original_sender = sender[0]
-#             reply_data = {
-#                 'recipient': original_sender,
-#                 'subject': f'Re: {original_subject}',
-#                 'body': reply_content,
-#                 'action': 'Send'
-#             }
-#             headers = {'X-CSRFToken': session.cookies.get('csrftoken')}
-#             response = session.post('http://localhost:8000/compose/', data=reply_data, headers=headers)
-
-#             if response.status_code == 200:
-#                 save_sent_message(st.session_state.username, original_sender, f'Re: {original_subject}', reply_content)
-#                 st.success('Reply sent successfully.')
-#             else:
-#                 st.error(f"Failed to send reply. Status code: {response.status_code}")
-#         else:
-#             st.error("Original message sender not found.")
-#     else:
-#         st.error("No original message found with the given subject.")
 
 # Streamlit code for login, inbox page, and sidebar
 
