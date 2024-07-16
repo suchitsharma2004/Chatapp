@@ -12,11 +12,9 @@ I'm a Data Science and AI/ML student 💻
 </h2> 
 
 I love exploring what all AI has to offer. I also write research articles.
-https://www.linkedin.com/in/suchit-sharma-465ba1251/
+
 ### 🤝 Connect with me:
-
-<a href="(https://www.linkedin.com/in/suchit-sharma-465ba1251/)"><img align="left" src="https://raw.githubusercontent.com/yushi1007/yushi1007/main/images/linkedin.svg" alt="Yu Shi | LinkedIn" width="21px"/></a>
-
+<a href="https://www.linkedin.com/in/suchit-sharma-465ba1251/"><img align="left" src="https://raw.githubusercontent.com/yushi1007/suchit-sharma-465ba1251/main/images/linkedin.svg" alt="Suchit Sharma | LinkedIn" width="21px"/></a>
 </br>
 - 💬 If you have any question/feedback, please do not hesitate to reach out to me!
 
