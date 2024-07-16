@@ -59,20 +59,6 @@ def fetch_users():
 
     return [user[0] for user in users]
 
-def fetch_all_users():
-    db_path = 'mailapp/db.sqlite3'
-
-    connection = sqlite3.connect(db_path)
-    cursor = connection.cursor()
-
-    cursor.execute("SELECT username FROM auth_user")  # Adjust as per your Django model
-
-    users = cursor.fetchall()
-
-    cursor.close()
-    connection.close()
-
-    return [user[0] for user in users]
 
 # Function to fetch drafts for the logged-in user
 def fetch_drafts(username):
@@ -169,7 +155,6 @@ def send_message(to_usernames, subject, content, send_to_all=False):
     
     if send_to_all:
         # Send to all users
-        # users = fetch_all_users()
         users = fetch_users()
         for user in users:
             message_data = {
