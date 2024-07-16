@@ -3,13 +3,14 @@ import requests
 import sqlite3
 from datetime import datetime
 import google.generativeai as genai
+from keys import API_KEY
 
 
 # Function to navigate to different pages
 def navigate_to(page_name):
     st.session_state.page = page_name
 
-genai.configure(api_key='AIzaSyD040mK5kKMExKdU-qzOil9kT-yDIp2d5Q  ')
+genai.configure(api_key=API_KEY)
 
  
 # Function to handle login
