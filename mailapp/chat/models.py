@@ -18,6 +18,7 @@ class Message(models.Model):
     recipient = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
     subject = models.CharField(max_length=255)
     body = models.TextField()
+    project=models.ForeignKey(Project, on_delete=models.CASCADE)
     date_sent = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

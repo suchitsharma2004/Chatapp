@@ -90,16 +90,19 @@ def fetch_received_messages(username):
     cursor = connection.cursor()
 
     cursor.execute("""
-        SELECT m.id, u.username, m.subject, m.body, strftime('%Y-%m-%d %H:%M', m.date_sent) AS formatted_date_sent
+        SELECT m.id, u.username, m.subject, m.body, strftime('%Y-%m-%d %H:%M', m.date_sent) AS formatted_date_sent, p.name
         FROM chat_message m
         JOIN auth_user u ON m.sender_id = u.id
         JOIN auth_user r ON m.recipient_id = r.id
+        LEFT JOIN chat_project p ON m.project_id = p.id
         WHERE r.username = ?
         GROUP BY m.id  -- Ensure distinct messages by message ID
         ORDER BY m.date_sent DESC
     """, (username,))
 
     messages = cursor.fetchall()
+    # print(messages)
+    
 
     cursor.close()
     connection.close()
@@ -114,10 +117,11 @@ def fetch_sent_messages(username):
     cursor = connection.cursor()
 
     cursor.execute("""
-        SELECT DISTINCT m.id, u.username, m.subject, m.body, m.date_sent
+        SELECT DISTINCT m.id, u.username, m.subject, m.body, m.date_sent, p.name
         FROM chat_message m
         JOIN auth_user u ON m.recipient_id = u.id
         JOIN auth_user s ON m.sender_id = s.id
+        LEFT JOIN chat_project p ON m.project_id = p.id          
         WHERE s.username = ?
         ORDER BY m.date_sent DESC
     """, (username,))
@@ -151,7 +155,7 @@ def save_draft(to_list, subject, content):
             st.error(f"Failed to save draft for {to}. Status code: {response.status_code}")
 
 #Function to send message
-def send_message(to_usernames, subject, content, send_to_all=False):
+def send_message(to_usernames, subject, content, project_id, send_to_all=False):
     session = st.session_state.session
     
     if send_to_all:
@@ -162,11 +166,12 @@ def send_message(to_usernames, subject, content, send_to_all=False):
                 'recipient': user,
                 'subject': subject,
                 'body': content,
+                'project_id': project_id,  # Add project_id to message data
                 'action': 'Send'  # Specify the action to send message on the Django side
             }
             headers = {'X-CSRFToken': session.cookies.get('csrftoken')}  # Include CSRF token in headers
             response = session.post('http://localhost:8000/compose/', data=message_data, headers=headers)
-            save_sent_message(st.session_state.username,user, subject, content)
+            save_sent_message(st.session_state.username, user, subject, content, project_id)
             if response.status_code != 200:
                 st.error(f"Failed to send message to {user}. Status code: {response.status_code}")
                 return False
@@ -174,7 +179,7 @@ def send_message(to_usernames, subject, content, send_to_all=False):
         return True
     
 
-def send_multi_message(to_list, subject, content):
+def send_multi_message(to_list, subject, content,project_id):
     session = st.session_state.session
     
     for to in to_list:
@@ -182,6 +187,7 @@ def send_multi_message(to_list, subject, content):
             'recipient': to,
             'subject': subject,
             'body': content,
+            'project_id': project_id,
             'action': 'Send'  # Specify the action to send message on the Django side
         }
         
@@ -190,14 +196,13 @@ def send_multi_message(to_list, subject, content):
         response = session.post('http://localhost:8000/compose/', data=message_data, headers=headers)
         
         if response.status_code == 200:
-            save_sent_message(st.session_state.username, to, subject, content)
+            save_sent_message(st.session_state.username, to, subject, content,project_id)
             st.success(f'Message sent successfully to {to}.')
         else:
             st.error(f"Failed to send message to {to}. Status code: {response.status_code}")
 
 
-
-def save_sent_message(sender_username, recipient_username, subject, content):
+def save_sent_message(sender_username, recipient_username, subject, content, project_id):
     db_path = 'mailapp/db.sqlite3'
 
     connection = sqlite3.connect(db_path)
@@ -221,13 +226,14 @@ def save_sent_message(sender_username, recipient_username, subject, content):
     # Insert message into database
     date_sent = datetime.now().strftime('%Y-%m-%d %H:%M')
     cursor.execute("""
-        INSERT INTO chat_message (sender_id, recipient_id, subject, body, date_sent)
-        VALUES (?, ?, ?, ?, ?)
-    """, (sender_id, recipient_id, subject, content, date_sent))
+        INSERT INTO chat_message (sender_id, recipient_id, subject, body, date_sent, project_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (sender_id, recipient_id, subject, content, date_sent, project_id))
 
     connection.commit()
     cursor.close()
     connection.close()
+
 # Function to delete draft
 def delete_draft(draft_id):
     db_path = 'mailapp/db.sqlite3'
@@ -253,10 +259,11 @@ def fetch_messages_by_subject(username, subject):
 
     # Fetch received messages
     cursor.execute("""
-        SELECT m.id, u.username, m.subject, m.body, strftime('%Y-%m-%d %H:%M', m.date_sent) AS formatted_date_sent, 'received' AS message_type
+        SELECT m.id, u.username, m.subject, m.body, strftime('%Y-%m-%d %H:%M', m.date_sent) AS formatted_date_sent, p.name, 'received' AS message_type
         FROM chat_message m
         JOIN auth_user u ON m.sender_id = u.id
         JOIN auth_user r ON m.recipient_id = r.id
+        LEFT JOIN chat_project p ON m.project_id = p.id 
         WHERE r.username = ? AND m.subject = ?
         GROUP BY m.id  -- Ensure distinct messages by message ID
         ORDER BY m.date_sent DESC
@@ -265,10 +272,11 @@ def fetch_messages_by_subject(username, subject):
 
     # Fetch sent messages
     cursor.execute("""
-        SELECT m.id, u.username, m.subject, m.body, strftime('%Y-%m-%d %H:%M', m.date_sent) AS formatted_date_sent, 'sent' AS message_type
+        SELECT m.id, u.username, m.subject, m.body, strftime('%Y-%m-%d %H:%M', m.date_sent) AS formatted_date_sent,p.name, 'sent' AS message_type
         FROM chat_message m
         JOIN auth_user u ON m.recipient_id = u.id
         JOIN auth_user s ON m.sender_id = s.id
+        LEFT JOIN chat_project p ON m.project_id = p.id 
         WHERE s.username = ? AND m.subject = ?
         ORDER BY m.date_sent DESC
     """, (username, subject))
@@ -287,6 +295,26 @@ def generate_email(prompt):
     model = genai.GenerativeModel('gemini-1.5-flash')
     response = model.generate_content(prompt)
     return response.text.strip()
+
+def fetch_projects(username):
+    db_path = 'mailapp/db.sqlite3'
+
+    connection = sqlite3.connect(db_path)
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT p.id, p.name
+        FROM chat_project p
+        JOIN auth_user u ON p.user_id = u.id
+        WHERE u.username = ?
+    """, (username,))
+
+    projects = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    return projects
 def main():
     
     st.title("Mail Application")
@@ -316,6 +344,7 @@ def main():
                 st.success('Logged in successfully.')
             # No need for else as login function handles errors
 
+    
     elif selected_page == 'Inbox':
         st.write("Your Inbox:")
 
@@ -332,31 +361,41 @@ def main():
             messages = [message for message in messages if message[2] == selected_subject]
 
         for message in messages:
-            message_id, from_user, subject, content, formatted_date_sent = message
+            message_id, from_user, subject, content, formatted_date_sent, name = message
 
-            with st.expander(f"From: {from_user}, Subject: {subject}, Sent: {formatted_date_sent}"):
+            with st.expander(f"From: {from_user}, Subject: {subject}, Sent: {formatted_date_sent}, Project: {name}"):
                 st.markdown(f"**Content:**\n{content}")
                 
                 # Add a reply button
-                if st.button("Reply", key=f"reply_btn_{message_id}"):
+                reply_btn_key = f"reply_btn_{message_id}"
+                if st.button("Reply", key=reply_btn_key):
                     st.session_state[f"show_reply_{message_id}"] = True
                 
                 if st.session_state.get(f"show_reply_{message_id}", False):
-                    # reply_to = st.text_input("To", [from_user], key=f"to_{message_id}")
-                    reply_to = st.multiselect("To", [from_user], key=f"to_{message_id}")  # Allow selecting multiple recipients if needed
-                    reply_subject = st.text_input("Subject", f"Re: {subject}", key=f"subject_{message_id}")
-                    # reply_subject=st.text_input("subject")
-                    reply_content = st.text_area("Content", key=f"content_{message_id}")
-                    # reply_content=st.text_area("reply Content")
+                    reply_to_key = f"to_{message_id}"
+                    reply_subject_key = f"subject_{message_id}"
+                    reply_content_key = f"content_{message_id}"
+                    
+                    users = fetch_users()
+                    reply_to = st.multiselect('To', users)
+                    reply_subject = st.text_input("Subject", f" {subject}", key=reply_subject_key)
+                    reply_content = st.text_area("Content", key=reply_content_key)
+                    
+                    projects = fetch_projects(st.session_state.username)  # Fetch projects for the logged-in user
+                    project_names = [project[1] for project in projects]
+                    project_name_key = f"project_name_{message_id}"
+                    project_name = st.selectbox("Project", ["Select project"] + project_names, key=project_name_key)
 
-                    if st.button("Send Reply", key=f"send_reply_{message_id}"):
-                        send_multi_message(reply_to, reply_subject, reply_content)
-                        # reply_message(reply_subject, reply_content)
+                    send_reply_key = f"send_reply_{message_id}"
+                    if st.button("Send Reply", key=send_reply_key):
+                        # send_multi_message(reply_to, reply_subject, reply_content, project=project_name)
+                        selected_project = next(project for project in projects if project[1] == project_name)
+                        send_multi_message(reply_to, reply_subject, reply_content,selected_project[0])
 
                         st.success("Reply sent successfully.")
                         st.session_state[f"show_reply_{message_id}"] = False
                         st.experimental_rerun()  # Refresh the inbox after sending the reply
-            
+
     elif selected_page == 'Compose':
         st.write("Compose a new message:")
 
@@ -364,7 +403,9 @@ def main():
         users = fetch_users()
         to_usernames = st.multiselect('To', users)
         # to = st.multiselect("To", users, key="compose_to") if users else st.text_input("To", key="compose_to")  # Show text input if no users fetched
-        
+        projects = fetch_projects(st.session_state.username)  # Fetch projects for the logged-in user
+        project_names = [project[1] for project in projects]
+        project_name = st.selectbox('Select Project', project_names  )      
         if 'reply_subject' in st.session_state:
             subject = st.session_state.reply_subject
             to = st.session_state.reply_to[0] if len(st.session_state.reply_to) == 1 else st.multiselectselect("To", st.session_state.reply_to)
@@ -385,10 +426,10 @@ def main():
 
         if 'generated_content' in st.session_state:
             st.text_area("Generated Content", value=st.session_state.generated_content, key="compose_content_generated", height=200)
-            if st.button("Use Generated Content"):
-                content = st.session_state.generated_content
-                st.session_state.compose_content = content
-                st.success("Generated content has been applied.")
+            # if st.button("Use Generated Content"):
+                # content = st.session_state.generated_content
+                # st.session_state.compose_content = content
+                # st.success("Generated content has been applied.")
 
         # Buttons for actions
         col1, col2 = st.columns([1, 3])  # Reversed column widths
@@ -396,9 +437,12 @@ def main():
             save_draft(to_usernames, subject, content)
         if col1.button("Send", key="compose_send"):
             if send_to_all:
-                send_message(users, subject, content, send_to_all=True)
+                selected_project = next(project for project in projects if project[1] == project_name)
+                send_message(users, subject, content, selected_project[0],send_to_all=True)
+                # send_message(users, subject, content, send_to_all=True)
             else:
-                send_multi_message(to_usernames, subject, content)
+                selected_project = next(project for project in projects if project[1] == project_name)
+                send_multi_message(to_usernames, subject, content, selected_project[0])
         
             
 
@@ -420,7 +464,12 @@ def main():
             if col1.button(f"Save Draft {draft_id}", key=f"save_draft_{draft_id}"):
                 save_draft(to, subject, content)
             if col2.button(f"Send {draft_id}", key=f"send_{draft_id}"):
-                send_multi_message(to, subject, content)
+                projects = fetch_projects(st.session_state.username)  # Fetch projects for the logged-in user
+                project_names = [project[1] for project in projects]
+                project_name = st.selectbox('Select Project', project_names)
+                selected_project = next(project for project in projects if project[1] == project_name)
+                send_multi_message(to, subject, content, selected_project[0])
+                
                 delete_draft(draft_id)
             if col3.button(f"Delete {draft_id}", key=f"delete_draft_{draft_id}"):
                 delete_draft(draft_id)
@@ -441,9 +490,9 @@ def main():
             sent_messages = [message for message in sent_messages if message[2] == selected_subject]
 
         for message in sent_messages:
-            message_id, to_user, subject, content, date_sent = message
+            message_id, to_user, subject, content, date_sent , name= message
 
-            with st.expander(f"To: {to_user}, Subject: {subject}, Sent: {date_sent}"):
+            with st.expander(f"To: {to_user}, Subject: {subject}, Sent: {date_sent},P: {name}"):
                 st.markdown(f"**Content:**\n{content}")
                 st.markdown("---")
 
@@ -479,6 +528,7 @@ def main():
                 st.write("Received Messages:")
                 for message in received_messages:
                     st.write(f"**Subject:** {message[2]}")
+                    st.write(f"**project:** {message[5]}")
                     st.write(f"**From:** {message[1]}")
                     st.write(f"**Date Sent:** {message[4]}")
                     st.write(f"**Message:** {message[3]}")
@@ -490,6 +540,7 @@ def main():
                 st.write("Sent Messages:")
                 for message in sent_messages:
                     st.write(f"**Subject:** {message[2]}")
+                    st.write(f"**project:** {message[5]}")
                     st.write(f"**To:** {message[1]}")
                     st.write(f"**Date Sent:** {message[4]}")
                     st.write(f"**Message:** {message[3]}")
