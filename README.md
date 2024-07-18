@@ -38,6 +38,6 @@ I love exploring what all AI has to offer. I also write research articles.
 
 ## 📈 GitHub Stats 
 
-[![Anurag's github stats](https://github-readme-stats.vercel.app/api?username=suchitsharma2004)](https://github.com/suchitsharma2004)
+[![Suchit's's github stats](https://github-readme-stats.vercel.app/api?username=suchitsharma2004)](https://github.com/suchitsharma2004)
 
 [![Top Langs](https://github-readme-stats.vercel.app/api/top-langs/?username=suchitsharma2004&layout=compact)](https://github.com/suchitsharma2004)
